@@ -21,14 +21,23 @@ const holdings = [
 // FETCH FROM FSMONE (AIA FUNDS)
 // -------------------------------
 async function fetchFromFSMOne(sedol) {
-  const url = `https://www.fsmone.com.hk/fsmmobilev2/web-api/fund/get-factsheet?paramSedolnumber=${sedol}`;
-  const res = await fetch(url);
+  const url = `https://www.fsmone.com.hk/funds/api/fund/search?sedol=${sedol}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json"
+    }
+  });
+
   const json = await res.json();
+  const fund = json?.data?.[0];
 
   return {
-    nav: json?.data?.navPrice ?? null,
-    date: json?.data?.navDate ?? null,
-    currency: json?.data?.currency ?? null
+    nav: fund?.nav ?? null,
+    date: fund?.navDate ?? null,
+    currency: fund?.currency ?? null
   };
 }
 
