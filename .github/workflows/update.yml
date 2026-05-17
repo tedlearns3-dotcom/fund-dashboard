@@ -1,19 +1,21 @@
 name: Update Fund Data
 
 on:
-  schedule:
-    - cron: "0 0 * * 1"   # every Monday
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -24,10 +26,10 @@ jobs:
       - name: Run update script
         run: node scripts/update.js
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add data.json
-          git commit -m "Auto-update NAV data" || echo "No changes"
+          git commit -m "Auto-update NAV data" || echo "No changes to commit"
           git push
