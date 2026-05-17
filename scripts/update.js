@@ -1,33 +1,74 @@
-// scripts/update.js
 const fs = require("fs");
 const fetch = require("node-fetch");
 
-// Your fund tickers (you can change these later)
+// -------------------------------
+// FUND CONFIGURATION
+// -------------------------------
 const holdings = [
-  { name: "Franklin Biotechnology Discovery A", ticker: "FBDIX" },
-  { name: "Templeton Eastern Europe A", ticker: "TEURX" },
-  { name: "JPM ASEAN Fund", ticker: "LPINX" },
-  { name: "ZI FSSA China Growth", ticker: "FHKCX" },
-  { name: "ZI Allianz Oriental", ticker: "AZOAX" },
-  { name: "ZI BGF World Technology", ticker: "BGSAX" },
-  { name: "ZI Brock Global Healthcare", ticker: "BHGAX" }
+  // AIA (FSMOne)
+  { name: "Franklin Biotechnology Discovery A (D05)", source: "fsmone", sedol: "HKFT10" },
+  { name: "Templeton Eastern Europe Fund (EUR) A(acc) (D08)", source: "fsmone", sedol: "HKFT05" },
+  { name: "JPM ASEAN Fund USD Acc (F08)", source: "fsmone", sedol: "HKJF01" },
+
+  // Zurich International (Vista)
+  { name: "ZI FSSA China Growth", source: "zurich" },
+  { name: "ZI Allianz Oriental", source: "zurich" },
+  { name: "ZI BGF World Technology", source: "zurich" },
+  { name: "ZI Brock Global Healthcare", source: "zurich" }
 ];
 
-async function fetchPrice(ticker) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+// -------------------------------
+// FETCH FROM FSMONE (AIA FUNDS)
+// -------------------------------
+async function fetchFromFSMOne(sedol) {
+  const url = `https://www.fsmone.com.hk/fsmmobilev2/web-api/fund/get-factsheet?paramSedolnumber=${sedol}`;
   const res = await fetch(url);
   const json = await res.json();
-  return json.chart.result[0].meta.regularMarketPrice;
+
+  return {
+    nav: json?.data?.navPrice ?? null,
+    date: json?.data?.navDate ?? null,
+    currency: json?.data?.currency ?? null
+  };
 }
 
+// -------------------------------
+// FETCH FROM ZURICH API
+// -------------------------------
+async function fetchFromZurich(fundName) {
+  const url = "https://api.zurich.com.hk/api/v1/fund/zillfunds?producttype=Vista";
+  const res = await fetch(url);
+  const json = await res.json();
+
+  const match = json?.data?.find(f => f.fundName.trim() === fundName.trim());
+
+  return {
+    nav: match?.nav ?? null,
+    date: match?.navDate ?? null,
+    currency: match?.currency ?? null
+  };
+}
+
+// -------------------------------
+// MAIN UPDATE FUNCTION
+// -------------------------------
 async function update() {
   const updated = [];
 
   for (const h of holdings) {
-    const price = await fetchPrice(h.ticker);
+    let result;
+
+    if (h.source === "fsmone") {
+      result = await fetchFromFSMOne(h.sedol);
+    } else if (h.source === "zurich") {
+      result = await fetchFromZurich(h.name);
+    }
+
     updated.push({
-      ...h,
-      price,
+      name: h.name,
+      nav: result.nav,
+      navDate: result.date,
+      currency: result.currency,
       updatedAt: new Date().toISOString()
     });
   }
@@ -44,7 +85,7 @@ async function update() {
     )
   );
 
-  console.log("Updated data.json");
+  console.log("data.json updated successfully");
 }
 
 update();
